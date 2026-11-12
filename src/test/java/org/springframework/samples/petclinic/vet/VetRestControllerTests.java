@@ -13,39 +13,44 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.springframework.samples.petclinic.vet;
+
+import java.util.List;
 
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledInNativeImage;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
+import org.springframework.samples.petclinic.system.exception.GlobalExceptionHandler;
+import org.springframework.samples.petclinic.vet.api.VetRestController;
+import org.springframework.samples.petclinic.vet.mapper.VetMapper;
+import org.springframework.samples.petclinic.vet.service.VetService;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-
-import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Test class for the {@link VetController}
+ * Tests for {@link VetRestController}.
  */
-
-@WebMvcTest(VetController.class)
+@WebMvcTest(VetRestController.class)
+@Import({ VetService.class, VetMapper.class, GlobalExceptionHandler.class })
 @DisabledInNativeImage
 @DisabledInAotMode
-class VetControllerTests {
+class VetRestControllerTests {
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -77,35 +82,37 @@ class VetControllerTests {
 	void setup() {
 		given(this.vets.findAll()).willReturn(Lists.newArrayList(james(), helen()));
 		given(this.vets.findAll(any(Pageable.class)))
-			.willReturn(new PageImpl<Vet>(Lists.newArrayList(james(), helen())));
-
+			.willReturn(new PageImpl<>(Lists.newArrayList(james(), helen())));
 	}
 
 	@Test
-	void showVetListHtml() throws Exception {
-
-		mockMvc.perform(MockMvcRequestBuilders.get("/vets.html?page=1"))
+	void shouldListVetsPaginated() throws Exception {
+		mockMvc.perform(get("/api/v1/vets").param("page", "0").param("size", "5").accept(MediaType.APPLICATION_JSON))
 			.andExpect(status().isOk())
-			.andExpect(model().attributeExists("listVets"))
-			.andExpect(view().name("vets/vetList"));
-
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+			.andExpect(jsonPath("$.content[0].id").value(1))
+			.andExpect(jsonPath("$.content[0].firstName").value("James"))
+			.andExpect(jsonPath("$.content[1].id").value(2))
+			.andExpect(jsonPath("$.content[1].specialties[0].name").value("radiology"))
+			.andExpect(jsonPath("$.totalElements").value(2));
 	}
 
 	@Test
-	void showVetListRedirectsOutOfBoundsPageToFirstPage() throws Exception {
-		for (int page : List.of(0, 2)) {
-			mockMvc.perform(get("/vets.html").param("page", Integer.toString(page)))
-				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/vets.html?page=1"));
-		}
+	void shouldRejectNegativePageWhenListingVets() throws Exception {
+		mockMvc.perform(get("/api/v1/vets").param("page", "-1").accept(MediaType.APPLICATION_JSON))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.status").value(400));
 	}
 
 	@Test
-	void showResourcesVetList() throws Exception {
-		ResultActions actions = mockMvc.perform(get("/vets").accept(MediaType.APPLICATION_JSON))
-			.andExpect(status().isOk());
-		actions.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-			.andExpect(jsonPath("$.vetList[0].id").value(1));
+	void shouldListAllVetsUnpaginated() throws Exception {
+		mockMvc.perform(get("/api/v1/vets/all").accept(MediaType.APPLICATION_JSON))
+			.andExpect(status().isOk())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+			.andExpect(jsonPath("$[0].id").value(1))
+			.andExpect(jsonPath("$[1].id").value(2))
+			.andExpect(jsonPath("$[1].nrOfSpecialties").value(1));
 	}
 
 }
+

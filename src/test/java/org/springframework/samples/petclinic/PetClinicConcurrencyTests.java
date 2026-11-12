@@ -1,6 +1,19 @@
+/*
+ * Copyright 2012-2025 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.springframework.samples.petclinic;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
@@ -10,20 +23,21 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.restclient.RestTemplateBuilder;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.restclient.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.OwnerRepository;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 public class PetClinicConcurrencyTests {
@@ -40,7 +54,7 @@ public class PetClinicConcurrencyTests {
 	@Test
 	public void testDuplicatePetNameRaceConditionIsBlocked() throws Exception {
 		int ownerId = 1;
-		Optional<Owner> initialOwnerOpt = ownerRepository.findById(ownerId);
+		Optional<Owner> initialOwnerOpt = this.ownerRepository.findById(ownerId);
 		assertThat(initialOwnerOpt).isPresent();
 		Owner owner = initialOwnerOpt.get();
 
@@ -50,7 +64,7 @@ public class PetClinicConcurrencyTests {
 		// Ensure duplicate pet name does not exist yet
 		assertThat(owner.getPet(duplicatePetName)).isNull();
 
-		RestTemplate template = restTemplateBuilder.baseUri("http://localhost:" + port).build();
+		RestTemplate template = this.restTemplateBuilder.baseUri("http://localhost:" + this.port).build();
 
 		int threadCount = 2;
 		ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
@@ -68,23 +82,22 @@ public class PetClinicConcurrencyTests {
 					startLatch.await(); // Wait to start simultaneously
 
 					HttpHeaders headers = new HttpHeaders();
-					headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+					headers.setContentType(MediaType.APPLICATION_JSON);
 
-					MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
-					map.add("name", duplicatePetName);
-					map.add("birthDate", "2020-01-01");
-					map.add("type", "cat");
+					String jsonBody = """
+							{
+								"name": "%s",
+								"birthDate": "2020-01-01",
+								"typeId": 1
+							}
+							""".formatted(duplicatePetName);
 
-					HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(map, headers);
+					HttpEntity<String> request = new HttpEntity<>(jsonBody, headers);
 
-					ResponseEntity<String> response = template.postForEntity("/owners/" + ownerId + "/pets/new",
-							request, String.class);
+					ResponseEntity<String> response = template
+						.postForEntity("/api/v1/owners/" + ownerId + "/pets", request, String.class);
 
-					String body = response.getBody();
-					// If the response page contains the duplicate validation error, it
-					// was blocked
-					if (response.getStatusCode().is2xxSuccessful()
-							&& (body == null || !body.contains("is already in use"))) {
+					if (response.getStatusCode().is2xxSuccessful()) {
 						successCount.incrementAndGet();
 					}
 					else {
@@ -111,17 +124,12 @@ public class PetClinicConcurrencyTests {
 			executorService.shutdown();
 		}
 
-		Owner updatedOwner = ownerRepository.findById(ownerId).get();
+		Owner updatedOwner = this.ownerRepository.findById(ownerId).orElseThrow();
 		int newPetCount = updatedOwner.getPets().size();
-
-		System.out.println("--- Concurrency Test Assertions ---");
-		System.out.println("Successful additions: " + successCount.get());
-		System.out.println("Failed additions: " + failureCount.get());
-		System.out.println("Original Pet Count: " + initialPetCount);
-		System.out.println("Final Pet Count: " + newPetCount);
 
 		// With the fix, exactly ONE concurrent request must succeed
 		assertThat(successCount.get()).isEqualTo(1);
+		assertThat(failureCount.get()).isEqualTo(1);
 		assertThat(newPetCount).isEqualTo(initialPetCount + 1);
 
 		long countWithDuplicateName = updatedOwner.getPets()

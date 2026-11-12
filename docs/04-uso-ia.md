@@ -113,5 +113,29 @@ Este documento registra de manera transparente las interacciones clave, los prom
      - Eliminados `VisitController`, `VetController`, `Vets` (wrapper XML), `WelcomeController`, `CrashController` y el directorio completo de plantillas `src/main/resources/templates`.
      - Limpieza de la anotación `@XmlElement` en la entidad `Vet`.
 - **Validación Humana:**
-  - Pendiente de confirmación para ejecutar el **Paso 3.4 (Migración de la suite de pruebas a REST `/api/v1/...`, pruebas de concurrencia y actualización de `README.md`)**.
+  - El usuario aprobó el Paso 3.3 y autorizó proceder con el **Paso 3.4 (Migración de la suite de pruebas, ejecución de validaciones y actualización del `README.md`)**.
+
+---
+
+### Iteración 06 — Paso 3.4: Migración de Suite de Pruebas a `/api/v1/...`, Concurrencia y Documentación `README.md`
+- **Fase:** Fase 3.4 - Verificación de Calidad, Pruebas Automatizadas y Documentación Final
+- **Prompt / Solicitud Clave:**
+  > *"Sí, procedamos con el Paso 3.4. Actualiza y migra toda la suite de pruebas unitarias, de integración y de concurrencia hacia los nuevos endpoints /api/v1/..., ejecuta las validaciones correspondientes y completa el README.md con las instrucciones detalladas de compilación, ejecución y pruebas."*
+- **Cambios Implementados por la IA:**
+  1. **Nuevas Pruebas de Controladores REST (`@WebMvcTest`):**
+     - `OwnerRestControllerTests`: Verifica paginación, normalización `strip()` de `lastName`, consulta por ID (`200` y `404 ProblemDetail`), creación (`201 Created` + header `Location`), errores de Bean Validation (`400`) y actualización (`PUT`).
+     - `PetRestControllerTests`: Verifica catálogo `/api/v1/pet-types`, listado y detalle de mascotas, creación exitosa (`201`), rechazo de fechas futuras (`@PastOrPresent`), y conflicto `409 Conflict` tanto por validación en memoria como por `DataIntegrityViolationException` (`unique_owner_pet_name`).
+     - `VisitRestControllerTests`: Verifica consulta y agendamiento de visitas en `/api/v1/owners/{ownerId}/pets/{petId}/visits`, validando fechas futuras (`@Future`) y longitud de descripción.
+     - `VetRestControllerTests`: Verifica listado paginado (`/api/v1/vets`) y listado completo (`/api/v1/vets/all`) en JSON.
+  2. **Pruebas Unitarias del Manejador Global de Excepciones:**
+     - `GlobalExceptionHandlerTests`: Verifica la conversión de `ResourceNotFoundException` (`404`), `DuplicateResourceException` (`409`), `DataIntegrityViolationException` (`409`), `BusinessRuleException` (`400`) y `RuntimeException` (`500`) a `ProblemDetail` (RFC 7807).
+  3. **Actualización de Pruebas de Integración y Concurrencia (`@SpringBootTest`):**
+     - `PetClinicConcurrencyTests`: Migrada para lanzar hilos concurrentes con payload JSON hacia `POST /api/v1/owners/1/pets`, comprobando que exactamente una petición triunfa (`201 Created`) y la concurrente es bloqueada (`409 Conflict`).
+     - `PetClinicIntegrationTests`, `MySqlIntegrationTests` y `PostgresIntegrationTests`: Actualizadas hacia `/api/v1/owners/1`, `/api/v1/owners?lastName=` y verificación del descriptor `/v3/api-docs`.
+  4. **Eliminación de Tests Obsoletos de Vistas Thymeleaf:**
+     - Removidos `OwnerControllerTests`, `PetControllerTests`, `PetTypeFormatterTests`, `PetValidatorTests`, `VisitControllerTests`, `VetControllerTests`, `CrashControllerTests`, `CrashControllerIntegrationTests` y `WelcomeControllerTests`.
+  5. **Actualización de `README.md`:**
+     - Documentada la nueva arquitectura modular con Java 21, tabla de módulos, catálogo completo de endpoints `/api/v1`, acceso a Swagger/OpenAPI e instrucciones de compilación, ejecución y pruebas.
+- **Validación Humana:**
+  - Ejecución y verificación completa de la suite de pruebas JUnit 5 con Maven.
 
