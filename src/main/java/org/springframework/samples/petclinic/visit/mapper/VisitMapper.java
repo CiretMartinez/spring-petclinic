@@ -13,25 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.samples.petclinic.system;
+package org.springframework.samples.petclinic.visit.mapper;
 
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.samples.petclinic.owner.Visit;
+import org.springframework.samples.petclinic.visit.dto.VisitResponse;
+import org.springframework.stereotype.Component;
 
 /**
- * Controller used to showcase what happens when an exception is thrown
- *
- * @author Michael Isvy
- * <p/>
- * Also see how a view that resolves to "error" has been added ("error.html").
+ * Mapper component converting between {@link Visit} JPA entities and
+ * {@link VisitResponse} Java 21 record DTOs.
  */
-@Controller
-class CrashController {
+@Component
+public class VisitMapper {
 
-	@GetMapping("/oups")
-	public String triggerException() {
-		throw new RuntimeException(
-				"Expected: controller used to showcase what " + "happens when an exception is thrown");
+	public VisitResponse toVisitResponse(Visit visit, Integer petId, Integer ownerId) {
+		return new VisitResponse(visit.getId(), visit.getDate(), visit.getDescription(), petId, ownerId);
 	}
 
 }
+

@@ -13,31 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.samples.petclinic.vet;
+package org.springframework.samples.petclinic.visit;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import jakarta.xml.bind.annotation.XmlElement;
-import jakarta.xml.bind.annotation.XmlRootElement;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.samples.petclinic.owner.Visit;
 
 /**
- * Simple domain object representing a list of veterinarians. Mostly here to be used for
- * the 'vets' {@link org.springframework.web.servlet.view.xml.MarshallingView}.
- *
- * @author Arjen Poutsma
+ * Spring Data JPA repository for {@link Visit} domain entities.
  */
-@XmlRootElement
-public class Vets {
-
-	private List<Vet> vets;
-
-	@XmlElement
-	public List<Vet> getVetList() {
-		if (vets == null) {
-			vets = new ArrayList<>();
-		}
-		return vets;
-	}
+public interface VisitRepository extends JpaRepository<Visit, Integer> {
 
 }
+

@@ -13,18 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.springframework.samples.petclinic.vet.dto;
 
-package org.springframework.samples.petclinic.system;
+import io.swagger.v3.oas.annotations.media.Schema;
 
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-
-@Controller
-class WelcomeController {
-
-	@GetMapping("/")
-	public String welcome() {
-		return "welcome";
-	}
+/**
+ * Immutable DTO representing a veterinarian specialty (e.g., radiology, surgery,
+ * dentistry).
+ *
+ * @param id unique identifier of the specialty
+ * @param name display name of the specialty
+ */
+@Schema(description = "Veterinarian specialty")
+public record SpecialtyResponse(
+		@Schema(description = "Unique identifier of the specialty", example = "1") Integer id,
+		@Schema(description = "Name of the specialty", example = "radiology") String name) {
 
 }
+

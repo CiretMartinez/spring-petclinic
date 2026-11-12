@@ -90,5 +90,28 @@ Este documento registra de manera transparente las interacciones clave, los prom
   5. **Limpieza de Código Legacy del Módulo:**
      - Eliminación de `OwnerController`, `PetController`, `PetValidator` y `PetTypeFormatter`.
 - **Validación Humana:**
-  - Pendiente de confirmación para avanzar al **Paso 3.3 (Módulo 2: `Visits` y Módulo 3: `Vets` + limpieza final de vistas legacy)**.
+  - El usuario confirmó la finalización del Paso 3.2 y autorizó proceder con el **Paso 3.3 (Módulos `visit` y `vet` + eliminación de artefactos Thymeleaf restantes)**.
+
+---
+
+### Iteración 05 — Paso 3.3: Refactorización de Módulo 2 (`Visits`), Módulo 3 (`Vets`) y Limpieza Total de Thymeleaf
+- **Fase:** Fase 3.3 - Implementación de Módulos `visit` y `vet` y Eliminación de Vistas Legacy
+- **Prompt / Solicitud Clave:**
+  > *"Sí, procedamos con el Paso 3.3. Implementa el Módulo 2 (Visits) en org.springframework.samples.petclinic.visit y el Módulo 3 (Vets) en org.springframework.samples.petclinic.vet con sus respectivos DTOs, servicios y controladores REST. Además, procede a eliminar los controladores y plantillas Thymeleaf legacy restantes."*
+- **Cambios Implementados por la IA:**
+  1. **Módulo 2 — `Visits` (`org.springframework.samples.petclinic.visit`):**
+     - `VisitRepository`: Repositorio Spring Data JPA para la entidad `Visit`.
+     - `VisitRequest` (`record`): Validaciones `@Future` (en fecha opcional; por defecto mañana `LocalDate.now().plusDays(1)` si se omite) y `@NotBlank @Size(max = 255)` en `description`.
+     - `VisitResponse` (`record`): Representación inmutable con `id`, `date`, `description`, `petId` y `ownerId`.
+     - `VisitMapper` y `VisitService`: Validación de pertenencia `Owner -> Pet`, regla de negocio de fecha futura y persistencia transaccional.
+     - `VisitRestController` (`/api/v1/owners/{ownerId}/pets/{petId}/visits`): Endpoints `GET` (listar visitas de mascota) y `POST` (`201 Created` + header `Location`).
+  2. **Módulo 3 — `Vets` (`org.springframework.samples.petclinic.vet`):**
+     - `SpecialtyResponse` y `VetResponse` (`record`): Contratos inmutables sin acoplamiento JAXB/XML.
+     - `VetMapper` y `VetService`: Consulta paginada (`findPaginated`) y completa (`findAll`) respaldada por la caché JCache `"vets"`.
+     - `VetRestController` (`/api/v1/vets` y `/api/v1/vets/all`): Endpoints REST documentados con OpenAPI 3.
+  3. **Limpieza Total de Componentes Legacy SSR:**
+     - Eliminados `VisitController`, `VetController`, `Vets` (wrapper XML), `WelcomeController`, `CrashController` y el directorio completo de plantillas `src/main/resources/templates`.
+     - Limpieza de la anotación `@XmlElement` en la entidad `Vet`.
+- **Validación Humana:**
+  - Pendiente de confirmación para ejecutar el **Paso 3.4 (Migración de la suite de pruebas a REST `/api/v1/...`, pruebas de concurrencia y actualización de `README.md`)**.
 
