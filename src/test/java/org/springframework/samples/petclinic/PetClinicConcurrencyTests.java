@@ -25,31 +25,26 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.restclient.RestTemplateBuilder;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.OwnerRepository;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
+@SpringBootTest
+@AutoConfigureMockMvc
 public class PetClinicConcurrencyTests {
 
-	@LocalServerPort
-	private int port;
+	@Autowired
+	private MockMvc mockMvc;
 
 	@Autowired
 	private OwnerRepository ownerRepository;
-
-	@Autowired
-	private RestTemplateBuilder restTemplateBuilder;
 
 	@Test
 	public void testDuplicatePetNameRaceConditionIsBlocked() throws Exception {
@@ -63,8 +58,6 @@ public class PetClinicConcurrencyTests {
 
 		// Ensure duplicate pet name does not exist yet
 		assertThat(owner.getPet(duplicatePetName)).isNull();
-
-		RestTemplate template = this.restTemplateBuilder.baseUri("http://localhost:" + this.port).build();
 
 		int threadCount = 2;
 		ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
@@ -81,9 +74,6 @@ public class PetClinicConcurrencyTests {
 				try {
 					startLatch.await(); // Wait to start simultaneously
 
-					HttpHeaders headers = new HttpHeaders();
-					headers.setContentType(MediaType.APPLICATION_JSON);
-
 					String jsonBody = """
 							{
 								"name": "%s",
@@ -92,12 +82,14 @@ public class PetClinicConcurrencyTests {
 							}
 							""".formatted(duplicatePetName);
 
-					HttpEntity<String> request = new HttpEntity<>(jsonBody, headers);
+					MvcResult result = this.mockMvc
+						.perform(post("/api/v1/owners/{ownerId}/pets", ownerId)
+							.contentType(MediaType.APPLICATION_JSON)
+							.content(jsonBody))
+						.andReturn();
 
-					ResponseEntity<String> response = template
-						.postForEntity("/api/v1/owners/" + ownerId + "/pets", request, String.class);
-
-					if (response.getStatusCode().is2xxSuccessful()) {
+					int status = result.getResponse().getStatus();
+					if (status >= 200 && status < 300) {
 						successCount.incrementAndGet();
 					}
 					else {
@@ -127,7 +119,7 @@ public class PetClinicConcurrencyTests {
 		Owner updatedOwner = this.ownerRepository.findById(ownerId).orElseThrow();
 		int newPetCount = updatedOwner.getPets().size();
 
-		// With the fix, exactly ONE concurrent request must succeed
+		// Exactly ONE concurrent request must succeed and ONE must fail with 409 Conflict
 		assertThat(successCount.get()).isEqualTo(1);
 		assertThat(failureCount.get()).isEqualTo(1);
 		assertThat(newPetCount).isEqualTo(initialPetCount + 1);

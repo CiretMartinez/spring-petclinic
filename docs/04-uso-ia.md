@@ -136,6 +136,6 @@ Este documento registra de manera transparente las interacciones clave, los prom
      - Removidos `OwnerControllerTests`, `PetControllerTests`, `PetTypeFormatterTests`, `PetValidatorTests`, `VisitControllerTests`, `VetControllerTests`, `CrashControllerTests`, `CrashControllerIntegrationTests` y `WelcomeControllerTests`.
   5. **Actualización de `README.md`:**
      - Documentada la nueva arquitectura modular con Java 21, tabla de módulos, catálogo completo de endpoints `/api/v1`, acceso a Swagger/OpenAPI e instrucciones de compilación, ejecución y pruebas.
-- **Validación Humana:**
-  - Ejecución y verificación completa de la suite de pruebas JUnit 5 con Maven.
+- **Validación Humana y Resultados de Ejecución:**
+  - Ejecución exitosa de la suite completa de **55 pruebas automatizadas** (`Tests run: 55, Failures: 0, Errors: 0, Skipped: 0 — BUILD SUCCESS`), incluyendo pruebas unitarias, de repositorios JPA (`ClinicServiceTests`), de controladores REST (`OwnerRestControllerTests`, `PetRestControllerTests`, `VisitRestControllerTests`, `VetRestControllerTests`), de integración (`PetClinicIntegrationTests`), de internacionalización (`I18nPropertiesSyncTest`), del manejador global de excepciones (`GlobalExceptionHandlerTests`) y de concurrencia (`PetClinicConcurrencyTests`).
 

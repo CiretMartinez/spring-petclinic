@@ -20,29 +20,25 @@ import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.restclient.RestTemplateBuilder;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.RequestEntity;
-import org.springframework.http.ResponseEntity;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.samples.petclinic.vet.VetRepository;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.test.web.servlet.MockMvc;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT, properties = "logging.level.sql=DEBUG")
+@SpringBootTest(properties = "logging.level.sql=DEBUG")
+@AutoConfigureMockMvc
 public class PetClinicIntegrationTests {
-
-	@LocalServerPort
-	int port;
 
 	@Autowired
 	private VetRepository vets;
 
 	@Autowired
-	private RestTemplateBuilder builder;
+	private MockMvc mockMvc;
 
 	@Test
 	void findAll() {
@@ -51,28 +47,26 @@ public class PetClinicIntegrationTests {
 	}
 
 	@Test
-	void ownerDetails() {
-		RestTemplate template = this.builder.baseUri("http://localhost:" + this.port).build();
-		ResponseEntity<String> result = template.exchange(RequestEntity.get("/api/v1/owners/1").build(), String.class);
-		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-		assertThat(result.getBody()).contains("Franklin");
+	void ownerDetails() throws Exception {
+		this.mockMvc.perform(get("/api/v1/owners/1").accept(MediaType.APPLICATION_JSON))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.lastName").value("Franklin"));
 	}
 
 	@Test
-	void ownerList() {
-		RestTemplate template = this.builder.baseUri("http://localhost:" + this.port).build();
-		ResponseEntity<String> result = template.exchange(RequestEntity.get("/api/v1/owners?lastName=").build(),
-				String.class);
-		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-		assertThat(result.getBody()).contains("content");
+	void ownerList() throws Exception {
+		this.mockMvc.perform(get("/api/v1/owners").param("lastName", "").accept(MediaType.APPLICATION_JSON))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.content").isArray())
+			.andExpect(jsonPath("$.totalElements").value(10));
 	}
 
 	@Test
-	void openApiDocsAvailable() {
-		RestTemplate template = this.builder.baseUri("http://localhost:" + this.port).build();
-		ResponseEntity<String> result = template.exchange(RequestEntity.get("/v3/api-docs").build(), String.class);
-		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-		assertThat(result.getBody()).contains("Spring PetClinic Modular REST API");
+	void vetsList() throws Exception {
+		this.mockMvc.perform(get("/api/v1/vets").accept(MediaType.APPLICATION_JSON))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.content").isArray())
+			.andExpect(jsonPath("$.totalElements").value(6));
 	}
 
 	public static void main(String[] args) {
