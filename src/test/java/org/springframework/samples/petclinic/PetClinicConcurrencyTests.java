@@ -1,6 +1,19 @@
+/*
+ * Copyright 2012-2025 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.springframework.samples.petclinic;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
@@ -10,37 +23,33 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.restclient.RestTemplateBuilder;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.OwnerRepository;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+
+@SpringBootTest
+@AutoConfigureMockMvc
 public class PetClinicConcurrencyTests {
 
-	@LocalServerPort
-	private int port;
+	@Autowired
+	private MockMvc mockMvc;
 
 	@Autowired
 	private OwnerRepository ownerRepository;
 
-	@Autowired
-	private RestTemplateBuilder restTemplateBuilder;
-
 	@Test
 	public void testDuplicatePetNameRaceConditionIsBlocked() throws Exception {
 		int ownerId = 1;
-		Optional<Owner> initialOwnerOpt = ownerRepository.findById(ownerId);
+		Optional<Owner> initialOwnerOpt = this.ownerRepository.findById(ownerId);
 		assertThat(initialOwnerOpt).isPresent();
 		Owner owner = initialOwnerOpt.get();
 
@@ -49,8 +58,6 @@ public class PetClinicConcurrencyTests {
 
 		// Ensure duplicate pet name does not exist yet
 		assertThat(owner.getPet(duplicatePetName)).isNull();
-
-		RestTemplate template = restTemplateBuilder.baseUri("http://localhost:" + port).build();
 
 		int threadCount = 2;
 		ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
@@ -67,24 +74,22 @@ public class PetClinicConcurrencyTests {
 				try {
 					startLatch.await(); // Wait to start simultaneously
 
-					HttpHeaders headers = new HttpHeaders();
-					headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+					String jsonBody = """
+							{
+								"name": "%s",
+								"birthDate": "2020-01-01",
+								"typeId": 1
+							}
+							""".formatted(duplicatePetName);
 
-					MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
-					map.add("name", duplicatePetName);
-					map.add("birthDate", "2020-01-01");
-					map.add("type", "cat");
+					MvcResult result = this.mockMvc
+						.perform(post("/api/v1/owners/{ownerId}/pets", ownerId)
+							.contentType(MediaType.APPLICATION_JSON)
+							.content(jsonBody))
+						.andReturn();
 
-					HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(map, headers);
-
-					ResponseEntity<String> response = template.postForEntity("/owners/" + ownerId + "/pets/new",
-							request, String.class);
-
-					String body = response.getBody();
-					// If the response page contains the duplicate validation error, it
-					// was blocked
-					if (response.getStatusCode().is2xxSuccessful()
-							&& (body == null || !body.contains("is already in use"))) {
+					int status = result.getResponse().getStatus();
+					if (status >= 200 && status < 300) {
 						successCount.incrementAndGet();
 					}
 					else {
@@ -111,17 +116,12 @@ public class PetClinicConcurrencyTests {
 			executorService.shutdown();
 		}
 
-		Owner updatedOwner = ownerRepository.findById(ownerId).get();
+		Owner updatedOwner = this.ownerRepository.findById(ownerId).orElseThrow();
 		int newPetCount = updatedOwner.getPets().size();
 
-		System.out.println("--- Concurrency Test Assertions ---");
-		System.out.println("Successful additions: " + successCount.get());
-		System.out.println("Failed additions: " + failureCount.get());
-		System.out.println("Original Pet Count: " + initialPetCount);
-		System.out.println("Final Pet Count: " + newPetCount);
-
-		// With the fix, exactly ONE concurrent request must succeed
+		// Exactly ONE concurrent request must succeed and ONE must fail with 409 Conflict
 		assertThat(successCount.get()).isEqualTo(1);
+		assertThat(failureCount.get()).isEqualTo(1);
 		assertThat(newPetCount).isEqualTo(initialPetCount + 1);
 
 		long countWithDuplicateName = updatedOwner.getPets()
