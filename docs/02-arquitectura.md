@@ -257,6 +257,15 @@ org.springframework.samples.petclinic
 
 ## 4. Decisiones Técnicas de Arquitectura (ADRs)
 
+### ADR-00: Elección de Monolito Modular frente a Microservicios Distribuidos
+- **Contexto:** La prueba técnica permite elegir entre un **Monolito Modular bien delimitado** o una arquitectura de **Microservicios desplegables por separado**, exigiendo justificar la decisión y las alternativas descartadas.
+- **Alternativa Descartada (Microservicios Distribuidos):** Dividir PetClinic en múltiples procesos independientes (`owners-service`, `visits-service`, `vets-service`) con bases de datos separadas introduciría sobrecarga operativa innecesaria (transacciones distribuidas / Saga para validar que un `Visit` pertenezca a un `Pet` y `Owner` válidos, latencia de red inter-servicio, duplicación de configuración y despliegue multi-contenedor) para un dominio cuyo volumen transaccional y cohesión de datos son fuertemente locales.
+- **Decisión:** Adoptar un **Monolito Modular** sobre Spring Boot 4.1 y Java 21 con tres módulos funcionales claramente separados (`owner`, `visit`, `vet`) y un núcleo compartido (`model`, `system`).
+- **Justificación:**
+  1. **Consistencia Transaccional ACID:** La creación de mascotas (`unique_owner_pet_name`) y visitas requiere garantías inmediatas de integridad referencial y control de concurrencia sobre el agregado `Owner -> Pet -> Visit`.
+  2. **Fronteras Lógicas Estrictas:** Cada módulo posee su propia capa `api` (`@RestController`), `service` (`@Service`), `mapper` (`@Component`) y `dto` (`record`), comunicándose mediante servicios de dominio y nunca exponiendo entidades JPA hacia el exterior.
+  3. **Evolucionabilidad:** Si en el futuro el módulo `vet` o `visit` requiriera escalado independiente, sus contratos REST (`/api/v1/vets`, `/api/v1/owners/{ownerId}/pets/{petId}/visits`) y su capa de servicio ya están desacoplados para extraerse sin alterar el contrato público.
+
 ### ADR-01: Adopción de Java 21 LTS y `record` para DTOs
 - **Contexto:** El proyecto base está configurado en Java 17 y utiliza clases mutables JavaBean para todo el flujo de datos.
 - **Decisión:** Actualizar el compilador y runtime a **Java 21** (`<java.version>21</java.version>`) y definir todos los DTOs de entrada/salida (`*Request`, `*Response`, `PageResponse<T>`) como `record` de Java.

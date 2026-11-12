@@ -22,7 +22,7 @@ El objetivo de esta modernización es evolucionar la plataforma hacia una **API 
   - *Nota técnica relevante en `pom.xml`:* El plugin `checkstyle` está fijado en `12.3.1` con un comentario explícito indicando que Checkstyle v13 requiere mínimo JDK 21.
 - **Plugins de Calidad y Formato:**
   - `spring-javaformat-maven-plugin` (`0.0.47`): Valida el formato de código en la fase `validate` (cualquier modificación de código debe cumplir con el formateador de Spring o ejecutarse `./mvnw spring-javaformat:apply`).
-  - `maven-checkstyle-plugin` (`3.6.0`) + `nohttp-checkstyle` (`0.0.11`): Prohibición de URLs con protocolo `http://` inseguro en código y configuración.
+  - `maven-checkstyle-plugin` (`3.6.0`) + `nohttp-checkstyle` (`0.0.11`): Prohibición de enlaces sin cifrado TLS (no-HTTPS) en código y configuración.
   - `jacoco-maven-plugin` (`0.8.15`): Cobertura de pruebas unitarias e integración.
   - `native-maven-plugin` (GraalVM) con soporte AOT mediante `PetClinicRuntimeHints`.
   - `cyclonedx-maven-plugin` y `git-commit-id-maven-plugin` para observabilidad en Actuator.
