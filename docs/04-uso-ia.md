@@ -22,5 +22,25 @@ Este documento registra de manera transparente las interacciones clave, los prom
 - **Sugerencias Rechazadas / Ajustadas:**
   - *Ninguna en esta fase:* Se cumplió estrictamente la regla de no asumir ni inventar estructuras, documentando únicamente lo existente en el código fuente real.
 - **Validación Humana:**
-  - Pendiente de revisión del entregable `docs/01-diagnostico-legacy.md` para proceder al diseño de arquitectura (`docs/02-arquitectura.md`) y plan de migración (`docs/03-plan-migracion.md`).
+  - El usuario aprobó el diagnóstico inicial (`docs/01-diagnostico-legacy.md`) y definió la directriz arquitectónica clave para la Fase 2: reemplazar completamente las vistas de Thymeleaf por una API REST/JSON moderna bajo el prefijo `/api/v1/...` estructurada como un monolito modular.
+
+---
+
+### Iteración 02 — Diseño de Arquitectura Modular y Plan de Migración REST
+- **Fase:** Fase 2 - Diseño de Arquitectura y Plan de Migración (`docs/02-arquitectura.md` y `docs/03-plan-migracion.md`)
+- **Prompt / Solicitud Clave:**
+  > *"Sí, procedamos con la Fase 2. Reemplacemos completamente las vistas de Thymeleaf por una API REST/JSON moderna bajo el prefijo `/api/v1/...`, ya que la prioridad es un backend robusto y modular. Diseña la arquitectura como un monolito modular con al menos dos módulos funcionales claros (ej. `owners-pets` y `visits-vets`), separación de DTOs y entidades JPA, y documentación OpenAPI. Adelante con docs/02-arquitectura.md y docs/03-plan-migracion.md."*
+- **Decisiones Arquitectónicas Generadas por la IA (Sugerencias Aceptadas):**
+  1. **Estructuración del Monolito Modular:** División explícita en módulos funcionales desacoplados:
+     - `owner` (Gestión de Propietarios, Mascotas y Tipos de Mascota).
+     - `visit` (Gestión y agendamiento de Visitas Clínicas).
+     - `vet` (Catálogo cacheado de Veterinarios y Especialidades).
+     - `system` & `model` (Shared Kernel, `PageResponse<T>`, `GlobalExceptionHandler` con `ProblemDetail` RFC 7807 y configuración OpenAPI).
+  2. **Diagramas Mermaid:** Elaboración de diagramas de componentes/módulos, secuencia (creación de mascota con validación y manejo de concurrencia `409 Conflict`) y modelo Entidad-Relación en `docs/02-arquitectura.md`.
+  3. **Matriz de Correspondencia MVC -> REST:** Mapeo completo de rutas legacy a `/api/v1/...`, reemplazando redirecciones condicionales `302` por respuestas determinísticas `200 OK` (`PageResponse`), `201 Created`, `400 Bad Request`, `404 Not Found` y `409 Conflict` en `docs/03-plan-migracion.md`.
+  4. **Identificación de Riesgos:** Registro del impacto en `spring-javaformat`, `nohttp-checkstyle`, `PetClinicConcurrencyTests` y actualización de pruebas `@WebMvcTest`.
+- **Sugerencias Rechazadas / Ajustadas:**
+  - Se descartó mantener coexistencia híbrida con controladores Thymeleaf para evitar duplicidad de rutas y eliminar dependencias innecesarias del frontend legacy (`spring-boot-starter-thymeleaf`, `webjars`).
+- **Validación Humana:**
+  - Pendiente de confirmación del usuario para iniciar la **Fase 3 (Implementación en código Java 21 + API REST + Tests)**.
 
