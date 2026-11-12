@@ -42,5 +42,26 @@ Este documento registra de manera transparente las interacciones clave, los prom
 - **Sugerencias Rechazadas / Ajustadas:**
   - Se descartó mantener coexistencia híbrida con controladores Thymeleaf para evitar duplicidad de rutas y eliminar dependencias innecesarias del frontend legacy (`spring-boot-starter-thymeleaf`, `webjars`).
 - **Validación Humana:**
-  - Pendiente de confirmación del usuario para iniciar la **Fase 3 (Implementación en código Java 21 + API REST + Tests)**.
+  - El usuario aprobó los entregables de diseño (`docs/02-arquitectura.md` y `docs/03-plan-migracion.md`) y autorizó el inicio inmediato del **Paso 3.1**.
+
+---
+
+### Iteración 03 — Paso 3.1: Configuración Java 21, Limpieza Thymeleaf, OpenAPI y Manejo Global de Excepciones
+- **Fase:** Fase 3.1 - Infraestructura Transversal y Base Tecnológica
+- **Prompt / Solicitud Clave:**
+  > *"Sí, confirmamos. Comencemos de inmediato con el Paso 3.1: actualiza la configuración base a Java 21, limpia las dependencias de Thymeleaf/WebJars, configura OpenAPI/Swagger y crea el GlobalExceptionHandler y el objeto PageResponse<T>."*
+- **Cambios Implementados por la IA:**
+  1. **Actualización a Java 21 y Limpieza de Build (`pom.xml` y `build.gradle`):**
+     - Configuración de `<java.version>21</java.version>` y `JavaLanguageVersion.of(21)`.
+     - Eliminación de `spring-boot-starter-thymeleaf`, `spring-boot-starter-thymeleaf-test`, `webjars-locator-lite`, `bootstrap`, `font-awesome` y el perfil Maven `css` (`libsass-maven-plugin`).
+     - Incorporación de `springdoc-openapi-starter-webmvc-ui` (`2.8.5`) y configuración en `application.properties` (`/v3/api-docs` y `/swagger-ui.html`).
+  2. **DTO Genérico de Paginación (`PageResponse<T>`):**
+     - Creación del `record` inmutable `PageResponse<T>` en `org.springframework.samples.petclinic.model.dto` con método factoría `PageResponse.from(Page<T>)` y copia defensiva `List.copyOf`.
+  3. **Excepciones de Dominio y Manejo Centralizado (`GlobalExceptionHandler`):**
+     - Creación de `ResourceNotFoundException` (`404`), `DuplicateResourceException` (`409`) y `BusinessRuleException` (`400`) en `org.springframework.samples.petclinic.system.exception`.
+     - Implementación de `GlobalExceptionHandler` (`@RestControllerAdvice`) emitiendo objetos estándar `ProblemDetail` (RFC 7807) con `type`, `title`, `status`, `detail`, `instance`, `timestamp` y mapa detallado de `errors` por campo ante fallos de Bean Validation.
+  4. **Configuración OpenAPI 3 (`OpenApiConfiguration`):**
+     - Registro del bean `OpenAPI` con metadatos de versión `v1.0.0` y licencia Apache 2.0 en `org.springframework.samples.petclinic.system`.
+- **Validación Humana:**
+  - Pendiente de revisión para continuar con el **Paso 3.2 (Módulo 1: Owners & Pets)**.
 
